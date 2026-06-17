@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Bash(dart --version)",
+      "Bash(git --version)",
+      "Bash(java -version)",
+      "Bash(adb version *)",
+      "Read(//c/Program Files/**)",
+      "Bash(flutter create *)",
+      "Bash(ls -la build.gradle*)",
+      "Bash(cat build.gradle.kts)",
+      "Bash(cat build.gradle)",
+      "Bash(CACHE=\"/c/Users/dongp/AppData/Local/Pub/Cache/hosted/pub.dev\" *)",
+      "Read(//c/Users/dongp/AppData/Local/Pub/Cache/hosted/pub.dev/**)"
+    ]
+  }
+}
