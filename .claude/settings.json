@@ -12,7 +12,31 @@
       "Bash(cat build.gradle.kts)",
       "Bash(cat build.gradle)",
       "Bash(CACHE=\"/c/Users/dongp/AppData/Local/Pub/Cache/hosted/pub.dev\" *)",
-      "Read(//c/Users/dongp/AppData/Local/Pub/Cache/hosted/pub.dev/**)"
+      "Read(//c/Users/dongp/AppData/Local/Pub/Cache/hosted/pub.dev/**)",
+      "Bash(sleep 60; tail -20 /tmp/flutter_run.log 2>/dev/null || echo \"no log yet\")",
+      "Read(//tmp/**)",
+      "Bash(env)",
+      "Bash(curl -s -o /dev/null -w \"maven central: HTTP %{http_code}\\\\n\" --max-time 20 \"https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugins-bom/2.2.0/kotlin-gradle-plugins-bom-2.2.0.pom\")",
+      "Bash(curl -s -o /dev/null -w \"gradle plugins: HTTP %{http_code}\\\\n\" --max-time 20 \"https://plugins.gradle.org/m2/org/jetbrains/kotlin/kotlin-gradle-plugins-bom/2.2.0/kotlin-gradle-plugins-bom-2.2.0.pom\")",
+      "Bash(curl -s -o /dev/null -w \"google maven: HTTP %{http_code}\\\\n\" --max-time 20 \"https://dl.google.com/dl/android/maven2/com/android/application/com.android.application.gradle.plugin/maven-metadata.xml\")",
+      "Bash(ls -la /c/Users/dongp/.gradle/ 2>/dev/null | head; echo \"---existing init scripts---\"; ls /c/Users/dongp/.gradle/init.gradle* 2>/dev/null || echo \"\\(none\\)\")",
+      "Read(//c/Users/dongp/.gradle//**)",
+      "Read(//c/Users/dongp/.gradle/**)",
+      "Bash(sleep 90; tail -25 /tmp/flutter_run2.log 2>/dev/null || echo \"no log yet\")",
+      "Bash(sleep 120; tail -30 /tmp/flutter_run3.log 2>/dev/null || echo \"no log yet\")",
+      "Read(//c/src/flutter/packages/flutter_tools/gradle/**)",
+      "Bash(sleep 150; tail -25 /tmp/flutter_run4.log 2>/dev/null || echo \"no log yet\")",
+      "Bash(sleep 180; tail -25 /tmp/flutter_run5.log 2>/dev/null || echo \"no log yet\")",
+      "Bash(tail -40 /tmp/flutter_run5.log 2>/dev/null)",
+      "Bash(sleep 180; tail -25 /tmp/flutter_run6.log 2>/dev/null || echo \"no log yet\")",
+      "Bash(sleep 240; tail -25 /tmp/flutter_run7.log 2>/dev/null || echo \"no log yet\")",
+      "Bash(wc -l)",
+      "Bash(echo '=== lines: __CMDSUB_OUTPUT__ ===')",
+      "Bash(grep -nE 'BUILD FAILED|BUILD SUCCESSFUL|FAILURE:|error:|Installing|Syncing files|Flutter run key|exit code|Could not GET|configurations' C:/Users/dongp/AppData/Local/Temp/claude/d--pdf-app/563569ad-88fc-419b-b428-51f0018b6e6b/tasks/b1yeqg2f6.output)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\dongp\\.gradle",
+      "C:\\src\\flutter\\packages\\flutter_tools\\gradle"
     ]
   }
 }

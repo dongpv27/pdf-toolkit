@@ -7,6 +7,7 @@ import '../services/ad_service.dart';
 import '../services/image_to_pdf_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/result_dialog.dart';
 
 class ImageToPdfScreen extends StatefulWidget {
   const ImageToPdfScreen({super.key});
@@ -55,41 +56,18 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
       );
       if (!mounted) return;
       AppSnackBar.success(context, 'PDF created successfully.');
-      _showSuccessDialog(result);
+      await showResultDialog(
+        context,
+        title: 'PDF created',
+        message: '${result.pageCount} page(s) created.',
+        filePath: result.path,
+      );
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, 'Conversion failed: $e');
     } finally {
       if (mounted) setState(() => _isConverting = false);
     }
-  }
-
-  void _showSuccessDialog(ConversionResult result) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.check_circle_outline, size: 40),
-        title: const Text('PDF created'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${result.pageCount} page(s) saved to:'),
-            const SizedBox(height: 8),
-            SelectableText(
-              result.path,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -178,7 +156,10 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.picture_as_pdf_outlined),
                 label: Text(

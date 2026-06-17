@@ -131,6 +131,19 @@ class AdService {
 
   // --- Interstitial ---------------------------------------------------------
 
+  static const int _interstitialEvery = 2;
+  int _opsSinceInterstitial = 0;
+
+  /// Call after a successful gated operation (export/merge/compress). Shows an
+  /// interstitial only once every [_interstitialEvery] operations, because a
+  /// rewarded ad already runs *before* each operation — this avoids ad fatigue.
+  Future<void> maybeShowInterstitial() async {
+    _opsSinceInterstitial++;
+    if (_opsSinceInterstitial < _interstitialEvery) return;
+    _opsSinceInterstitial = 0;
+    await showInterstitialAd();
+  }
+
   /// Shows an interstitial ad if one is ready; no-op otherwise.
   Future<void> showInterstitialAd() async {
     final ad = _interstitialAd;

@@ -44,6 +44,8 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.image_outlined,
                     title: 'Image to PDF',
                     subtitle: 'Turn photos into a single PDF',
+                    iconBackground: const Color(0xFFDBEAFE), // blue
+                    iconColor: const Color(0xFF2563EB),
                     onTap: () => context.push(AppRoutes.imageToPdf),
                   ),
                   const SizedBox(height: 12),
@@ -51,6 +53,8 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.merge_outlined,
                     title: 'Merge PDF',
                     subtitle: 'Combine multiple PDFs into one',
+                    iconBackground: const Color(0xFFDCFCE7), // green
+                    iconColor: const Color(0xFF16A34A),
                     onTap: () => context.push(AppRoutes.mergePdf),
                   ),
                   const SizedBox(height: 12),
@@ -58,6 +62,8 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.compress_outlined,
                     title: 'Compress PDF',
                     subtitle: 'Reduce PDF file size',
+                    iconBackground: const Color(0xFFFEF3C7), // amber
+                    iconColor: const Color(0xFFD97706),
                     onTap: () => context.push(AppRoutes.compressPdf),
                   ),
                 ],

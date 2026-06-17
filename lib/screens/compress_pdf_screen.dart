@@ -5,6 +5,7 @@ import '../services/ad_service.dart';
 import '../services/pdf_compress_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/result_dialog.dart';
 
 class CompressPdfScreen extends StatefulWidget {
   const CompressPdfScreen({super.key});
@@ -14,6 +15,9 @@ class CompressPdfScreen extends StatefulWidget {
 }
 
 class _CompressPdfScreenState extends State<CompressPdfScreen> {
+  // Accent matching the amber "Compress PDF" tile on the home screen.
+  static const Color _accent = Color(0xFFD97706);
+
   final PdfCompressService _service = const PdfCompressService();
 
   PlatformFile? _file;
@@ -52,53 +56,29 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
       final result = await _service.compress(file.path!, level: _level);
       if (!mounted) return;
       AppSnackBar.success(context, 'PDF compressed successfully.');
-      _showResultDialog(result);
+      final savedPercent = (result.savedRatio * 100).toStringAsFixed(1);
+      await showResultDialog(
+        context,
+        title: 'PDF compressed',
+        message: result.savedRatio > 0
+            ? 'Saved $savedPercent% of the original size.'
+            : 'Already optimized — no size reduction.',
+        filePath: result.path,
+        extra: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sizeRow('Original', result.originalBytes),
+            const SizedBox(height: 4),
+            _sizeRow('Compressed', result.compressedBytes),
+          ],
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, 'Compression failed: $e');
     } finally {
       if (mounted) setState(() => _isCompressing = false);
     }
-  }
-
-  void _showResultDialog(CompressionResult result) {
-    final savedPercent = (result.savedRatio * 100).toStringAsFixed(1);
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.check_circle_outline, size: 40),
-        title: const Text('PDF compressed'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sizeRow('Original', result.originalBytes),
-            const SizedBox(height: 4),
-            _sizeRow('Compressed', result.compressedBytes),
-            const Divider(height: 20),
-            Text(
-              result.savedRatio > 0
-                  ? 'Saved $savedPercent%'
-                  : 'Already optimized — no size reduction.',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 12),
-            const Text('Saved to:'),
-            const SizedBox(height: 4),
-            SelectableText(
-              result.path,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _sizeRow(String label, int bytes) {
@@ -126,6 +106,7 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
               message: 'Pick a PDF file and choose a compression level to reduce its size.',
               actionLabel: 'Pick PDF',
               onAction: _isCompressing ? null : _pickFile,
+              accentColor: _accent,
             )
           : _buildBody(file),
       bottomNavigationBar: _buildBottomBar(),
@@ -143,7 +124,10 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
             borderRadius: BorderRadius.circular(14),
           ),
           child: ListTile(
-            leading: const Icon(Icons.picture_as_pdf_outlined),
+            leading: const Icon(
+              Icons.picture_as_pdf_outlined,
+              color: _accent,
+            ),
             title: Text(
               file.name,
               maxLines: 1,
@@ -175,6 +159,7 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
                 for (final level in CompressionLevel.values)
                   RadioListTile<CompressionLevel>(
                     value: level,
+                    activeColor: _accent,
                     title: Text(level.label),
                     subtitle: Text(level.description),
                   ),
@@ -196,6 +181,8 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
                 icon: const Icon(Icons.upload_file_outlined),
                 label: const Text('Pick PDF'),
                 style: FilledButton.styleFrom(
+                  backgroundColor: _accent,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(52),
                 ),
               )
@@ -205,11 +192,16 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.compress_outlined),
                 label: Text(_isCompressing ? 'Compressing...' : 'Compress PDF'),
                 style: FilledButton.styleFrom(
+                  backgroundColor: _accent,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(52),
                 ),
               ),

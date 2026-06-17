@@ -1,7 +1,8 @@
 allprojects {
     repositories {
         google()
-        mavenCentral()
+        // Maven Central is blocked (HTTP 403) here; use Google's GCS mirror.
+        maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2") }
     }
 }
 

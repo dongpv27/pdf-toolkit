@@ -9,6 +9,7 @@ class EmptyStateView extends StatelessWidget {
     this.title,
     this.actionLabel,
     this.onAction,
+    this.accentColor,
   });
 
   final IconData icon;
@@ -17,10 +18,14 @@ class EmptyStateView extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
+  /// Optional accent for the icon (matches the tool's home-screen color).
+  final Color? accentColor;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final accent = accentColor ?? colors.primary;
 
     return Center(
       child: Padding(
@@ -32,10 +37,10 @@ class EmptyStateView extends StatelessWidget {
               width: 112,
               height: 112,
               decoration: BoxDecoration(
-                color: colors.primaryContainer.withValues(alpha: 0.5),
+                color: accent.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 52, color: colors.primary),
+              child: Icon(icon, size: 52, color: accent),
             ),
             const SizedBox(height: 24),
             if (title != null) ...[

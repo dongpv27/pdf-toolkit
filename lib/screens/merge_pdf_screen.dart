@@ -5,6 +5,7 @@ import '../services/ad_service.dart';
 import '../services/pdf_merge_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/result_dialog.dart';
 
 class MergePdfScreen extends StatefulWidget {
   const MergePdfScreen({super.key});
@@ -14,6 +15,9 @@ class MergePdfScreen extends StatefulWidget {
 }
 
 class _MergePdfScreenState extends State<MergePdfScreen> {
+  // Accent matching the green "Merge PDF" tile on the home screen.
+  static const Color _accent = Color(0xFF16A34A);
+
   final PdfMergeService _service = const PdfMergeService();
 
   final List<PlatformFile> _files = [];
@@ -64,7 +68,12 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
       );
       if (!mounted) return;
       AppSnackBar.success(context, 'PDFs merged successfully.');
-      _showResultDialog(result);
+      await showResultDialog(
+        context,
+        title: 'PDFs merged',
+        message: '${result.pageCount} page(s) merged into one PDF.',
+        filePath: result.path,
+      );
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, _errorMessage(e));
@@ -76,34 +85,6 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
   String _errorMessage(Object e) {
     if (e is ArgumentError) return e.message.toString();
     return 'Merge failed: $e';
-  }
-
-  void _showResultDialog(MergeResult result) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.check_circle_outline, size: 40),
-        title: const Text('PDFs merged'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${result.pageCount} page(s) saved to:'),
-            const SizedBox(height: 8),
-            SelectableText(
-              result.path,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -127,6 +108,7 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
               message: 'Pick at least two PDF files to combine them into one document.',
               actionLabel: 'Pick PDFs',
               onAction: _isMerging ? null : _pickFiles,
+              accentColor: _accent,
             )
           : _buildList(),
       bottomNavigationBar: _buildBottomBar(),
@@ -148,6 +130,8 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
           ),
           child: ListTile(
             leading: CircleAvatar(
+              backgroundColor: _accent.withValues(alpha: 0.15),
+              foregroundColor: _accent,
               child: Text('${index + 1}'),
             ),
             title: Text(
@@ -178,6 +162,8 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
                 icon: const Icon(Icons.upload_file_outlined),
                 label: const Text('Pick PDFs'),
                 style: FilledButton.styleFrom(
+                  backgroundColor: _accent,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(52),
                 ),
               )
@@ -187,13 +173,18 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.merge_outlined),
                 label: Text(
                   _isMerging ? 'Merging...' : 'Merge PDFs (${_files.length})',
                 ),
                 style: FilledButton.styleFrom(
+                  backgroundColor: _accent,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(52),
                 ),
               ),

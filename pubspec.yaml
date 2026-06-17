@@ -18,11 +18,24 @@ dependencies:
   file_picker: ^8.1.2
   syncfusion_flutter_pdf: ^27.1.48
   google_mobile_ads: ^5.1.0
+  open_filex: ^4.5.0
+  share_plus: ^10.1.2
+  printing: ^5.13.4
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#2563EB"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  min_sdk_android: 23

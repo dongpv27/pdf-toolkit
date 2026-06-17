@@ -1,25 +1,29 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
-/// User-facing compression strength.
+/// User-facing compression strength. Each level maps to a render resolution
+/// (DPI) and JPEG quality — lower values = smaller file, lower fidelity.
 enum CompressionLevel {
-  low('Low', 'Light optimization, best quality'),
-  medium('Medium', 'Balanced size and quality'),
-  high('High', 'Smallest size');
+  low('Low', 'Light compression, best quality', 144, 75),
+  medium('Medium', 'Balanced size and quality', 110, 55),
+  high('High', 'Smallest size', 88, 40);
 
-  const CompressionLevel(this.label, this.description);
+  const CompressionLevel(this.label, this.description, this.dpi, this.quality);
 
   final String label;
   final String description;
 
-  /// Maps to a Syncfusion content-stream compression level.
-  PdfCompressionLevel get pdfLevel => switch (this) {
-        CompressionLevel.low => PdfCompressionLevel.belowNormal,
-        CompressionLevel.medium => PdfCompressionLevel.normal,
-        CompressionLevel.high => PdfCompressionLevel.best,
-      };
+  /// Rasterization resolution in dots-per-inch.
+  final double dpi;
+
+  /// JPEG quality (0-100) for re-encoded pages.
+  final int quality;
 }
 
 /// Result of a compression run.
@@ -46,9 +50,13 @@ class CompressionResult {
 
 /// Compresses a single PDF file, fully offline.
 ///
-/// Uses Syncfusion's content-stream compression plus image re-encoding. The
-/// result is saved to the app's documents directory (no runtime storage
-/// permission required).
+/// Each page is rasterized at the level's DPI and re-encoded as a JPEG, then a
+/// new PDF is assembled from those images. This genuinely reduces the size of
+/// image-heavy / scanned PDFs. Note: vector text becomes a raster image, so
+/// this is a quality-vs-size tradeoff (as in most "compress PDF" tools).
+///
+/// If rasterizing does not actually shrink the file (e.g. a small text-only
+/// PDF), the original bytes are kept so the user never gets a larger file.
 class PdfCompressService {
   const PdfCompressService();
 
@@ -62,36 +70,62 @@ class PdfCompressService {
       throw Exception('File not found: $pdfPath');
     }
 
-    final originalBytes = await input.length();
+    final originalBytes = await input.readAsBytes();
 
-    final PdfDocument document;
+    final Uint8List compressed;
     try {
-      document = PdfDocument(inputBytes: await input.readAsBytes());
+      compressed = await _rasterizeAndReencode(originalBytes, level);
     } catch (_) {
       throw Exception('Could not read PDF: ${_baseName(pdfPath)}');
     }
 
-    final List<int> bytes;
-    try {
-      // Compress page content streams and drop incremental-update history so
-      // the whole file is rewritten compactly rather than appended to.
-      document.compressionLevel = level.pdfLevel;
-      document.fileStructure.incrementalUpdate = false;
-      bytes = await document.save();
-    } finally {
-      document.dispose();
-    }
+    // Never hand back a bigger file than we started with.
+    final outputBytes =
+        compressed.length < originalBytes.length ? compressed : originalBytes;
 
     final outputDir = await getApplicationDocumentsDirectory();
     final name = _resolveFileName(fileName, level);
     final outFile = File('${outputDir.path}/$name');
-    await outFile.writeAsBytes(bytes);
+    await outFile.writeAsBytes(outputBytes);
 
     return CompressionResult(
       file: outFile,
-      originalBytes: originalBytes,
-      compressedBytes: bytes.length,
+      originalBytes: originalBytes.length,
+      compressedBytes: outputBytes.length,
     );
+  }
+
+  Future<Uint8List> _rasterizeAndReencode(
+    Uint8List bytes,
+    CompressionLevel level,
+  ) async {
+    final document = pw.Document();
+
+    await for (final page in Printing.raster(bytes, dpi: level.dpi)) {
+      // page.pixels is raw RGBA; re-encode it as a (lossy) JPEG.
+      final rgba = img.Image.fromBytes(
+        width: page.width,
+        height: page.height,
+        bytes: page.pixels.buffer,
+        numChannels: 4,
+      );
+      final jpeg = img.encodeJpg(rgba, quality: level.quality);
+      final image = pw.MemoryImage(Uint8List.fromList(jpeg));
+
+      // Keep the page's physical size: pixels / dpi * 72 = points.
+      final widthPt = page.width / level.dpi * PdfPageFormat.inch;
+      final heightPt = page.height / level.dpi * PdfPageFormat.inch;
+
+      document.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat(widthPt, heightPt),
+          margin: pw.EdgeInsets.zero,
+          build: (context) => pw.Image(image, fit: pw.BoxFit.fill),
+        ),
+      );
+    }
+
+    return document.save();
   }
 
   String _baseName(String path) => path.split(RegExp(r'[\\/]')).last;

@@ -1,4 +1,4 @@
-package com.example.pdf_toolkit
+package com.dongpv.pdftoolkit
 
 import io.flutter.embedding.android.FlutterActivity
 

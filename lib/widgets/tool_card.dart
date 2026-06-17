@@ -8,6 +8,8 @@ class ToolCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.iconBackground,
+    this.iconColor,
   });
 
   final IconData icon;
@@ -15,17 +17,23 @@ class ToolCard extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
+  /// Optional per-tool icon tile colors. Default to the primary (blue) tile.
+  final Color? iconBackground;
+  final Color? iconColor;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final tileBg = iconBackground ?? colors.primaryContainer;
+    final tileFg = iconColor ?? colors.onPrimaryContainer;
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      shadowColor: colors.shadow.withValues(alpha: 0.2),
-      surfaceTintColor: colors.surfaceTint,
-      color: colors.surfaceContainerLow,
+      elevation: 1.5,
+      shadowColor: colors.shadow.withValues(alpha: 0.18),
+      surfaceTintColor: Colors.transparent,
+      color: colors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -39,10 +47,10 @@ class ToolCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: colors.primaryContainer,
+                  color: tileBg,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, size: 28, color: colors.onPrimaryContainer),
+                child: Icon(icon, size: 28, color: tileFg),
               ),
               const SizedBox(width: 16),
               Expanded(
