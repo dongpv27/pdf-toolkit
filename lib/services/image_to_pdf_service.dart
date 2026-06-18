@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -33,27 +34,14 @@ class ImageToPdfService {
       throw ArgumentError('At least one image is required.');
     }
 
-    final document = pw.Document();
-
-    for (final path in imagePaths) {
-      final bytes = await File(path).readAsBytes();
-      final image = pw.MemoryImage(bytes);
-
-      document.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(16),
-          build: (context) => pw.Center(
-            child: pw.Image(image, fit: pw.BoxFit.contain),
-          ),
-        ),
-      );
-    }
+    // Build the PDF on a background isolate so the UI stays responsive even
+    // for many / large images.
+    final bytes = await compute(_buildImagePdf, imagePaths);
 
     final outputDir = await getApplicationDocumentsDirectory();
     final name = _resolveFileName(fileName);
     final file = File('${outputDir.path}/$name');
-    await file.writeAsBytes(await document.save());
+    await file.writeAsBytes(bytes);
 
     return ConversionResult(file: file, pageCount: imagePaths.length);
   }
@@ -68,4 +56,27 @@ class ImageToPdfService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     return 'images_$timestamp.pdf';
   }
+}
+
+/// Runs on a background isolate (via `compute`). Reads each image and builds a
+/// single PDF, one image per A4 page, returning the encoded bytes.
+Future<Uint8List> _buildImagePdf(List<String> imagePaths) async {
+  final document = pw.Document();
+
+  for (final path in imagePaths) {
+    final bytes = File(path).readAsBytesSync();
+    final image = pw.MemoryImage(bytes);
+
+    document.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(16),
+        build: (context) => pw.Center(
+          child: pw.Image(image, fit: pw.BoxFit.contain),
+        ),
+      ),
+    );
+  }
+
+  return document.save();
 }

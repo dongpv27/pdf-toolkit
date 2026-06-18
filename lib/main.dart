@@ -4,11 +4,12 @@ import 'app/router.dart';
 import 'app/theme.dart';
 import 'services/ad_service.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await AdService.instance.initialize();
-  AdService.instance.loadAds();
   runApp(const PdfToolkitApp());
+  // Gather GDPR/UMP consent and initialize ads in the background so the UI
+  // shows immediately. Ads load only after consent allows it.
+  AdService.instance.initialize();
 }
 
 class PdfToolkitApp extends StatelessWidget {

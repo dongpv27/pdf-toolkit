@@ -35,7 +35,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/icon/icon.png"
-  adaptive_icon_background: "#2563EB"
-  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  # Launcher icon = cropped logo (document + PDF badge, no feature bar).
+  # The full logo-app.png is kept for the Play Store 512 listing icon.
+  image_path: "assets/icon/logo-launcher.png"
+  adaptive_icon_background: "#2C6BF2"
+  adaptive_icon_foreground: "assets/icon/logo-launcher.png"
   min_sdk_android: 23

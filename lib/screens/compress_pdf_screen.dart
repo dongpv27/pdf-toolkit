@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../services/ad_service.dart';
 import '../services/pdf_compress_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
@@ -41,15 +40,6 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
   Future<void> _compress() async {
     final file = _file;
     if (file == null || _isCompressing) return;
-
-    // Gate saving the compressed file behind a rewarded ad.
-    final rewarded = await AdService.instance.showRewardedAd();
-    if (!mounted || !rewarded) {
-      if (mounted && !rewarded) {
-        AppSnackBar.info(context, 'Watch the ad to save your compressed PDF.');
-      }
-      return;
-    }
 
     setState(() => _isCompressing = true);
     try {
@@ -165,6 +155,30 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
                   ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline, size: 18, color: _accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Best for scanned or photo PDFs. Pages are re-rendered as '
+                  'images, so text may no longer be selectable.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

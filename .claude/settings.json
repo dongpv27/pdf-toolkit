@@ -32,7 +32,8 @@
       "Bash(sleep 240; tail -25 /tmp/flutter_run7.log 2>/dev/null || echo \"no log yet\")",
       "Bash(wc -l)",
       "Bash(echo '=== lines: __CMDSUB_OUTPUT__ ===')",
-      "Bash(grep -nE 'BUILD FAILED|BUILD SUCCESSFUL|FAILURE:|error:|Installing|Syncing files|Flutter run key|exit code|Could not GET|configurations' C:/Users/dongp/AppData/Local/Temp/claude/d--pdf-app/563569ad-88fc-419b-b428-51f0018b6e6b/tasks/b1yeqg2f6.output)"
+      "Bash(grep -nE 'BUILD FAILED|BUILD SUCCESSFUL|FAILURE:|error:|Installing|Syncing files|Flutter run key|exit code|Could not GET|configurations' C:/Users/dongp/AppData/Local/Temp/claude/d--pdf-app/563569ad-88fc-419b-b428-51f0018b6e6b/tasks/b1yeqg2f6.output)",
+      "Bash(ls -d /c/Users/dongp/AppData/Local/Pub/Cache/hosted/pub.dev/google_mobile_ads-*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\dongp\\.gradle",

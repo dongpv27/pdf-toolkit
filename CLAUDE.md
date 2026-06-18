@@ -20,14 +20,13 @@ flutter test
 flutter test test/path/to/file_test.dart -n "test name"
 ```
 
-Release builds inject ad IDs and the Syncfusion license via `--dart-define`. See `RELEASE.md` for the full release flow; the build command is:
+Release builds inject the real ad unit IDs via `--dart-define`. See `RELEASE.md` for the full release flow; the build command is:
 
 ```bash
 flutter build appbundle --release \
   --dart-define=ADMOB_BANNER_ID=... \
   --dart-define=ADMOB_INTERSTITIAL_ID=... \
-  --dart-define=ADMOB_REWARDED_ID=... \
-  --dart-define=SYNCFUSION_LICENSE_KEY=...
+  --dart-define=ADMOB_REWARDED_ID=...
 ```
 
 If platform folders are stale or a plugin won't build, regenerate native scaffolding with `flutter create .` (preserves `lib/`), then `flutter clean && flutter pub get`.
@@ -45,20 +44,23 @@ Three layers, with a strict screen → service split:
 
 ### Ad flow (`lib/services/ad_service.dart`)
 
-`AdService` is a singleton initialized in `main()`. Key rules baked into the design:
+`AdService` is a singleton initialized (fire-and-forget) from `main()` after `runApp`. Key rules baked into the design:
 
 - **Real ad unit IDs come from `--dart-define` only** (`ADMOB_BANNER_ID`, `_INTERSTITIAL_ID`, `_REWARDED_ID`). Debug builds and missing IDs always fall back to Google's official test units — do not hardcode production IDs in source.
-- Each gated user action (export / merge / compress) is preceded by a **rewarded** ad; an **interstitial** runs only every 2nd successful op (`_interstitialEvery`) to avoid ad fatigue. Keep this two-tier gating when adding new features.
-- `showRewardedAd()` returns `true` when no ad is loaded so functionality is never blocked by ad failures.
-- Banner ads appear on the home screen only.
+- **GDPR/UMP consent first.** `initialize()` runs the consent flow (`requestConsentInfoUpdate` → `loadAndShowConsentFormIfRequired`) and only initializes the Mobile Ads SDK + preloads ads when `ConsentInformation.canRequestAds()` is true. EEA/UK users see a consent form on first launch.
+- **Ad placement (current model):**
+  - Actions (export / merge / compress) run **without any blocking ad**.
+  - An **interstitial** is shown after a completed op, throttled to once every `_interstitialEvery` (=2) operations, triggered from the result dialog's "Done" button (`maybeShowInterstitial()`).
+  - **Banner** ads appear on the **home screen only** (bottom) — never on feature screens, whose bottoms hold the primary action button (avoids AdMob accidental-click policy violations).
+- `showRewardedAd()` is **kept but unused** (returns `true` when no ad is loaded). Reserved for an optional future "watch ad to unlock premium" (rewarded) feature; no screen gates behind it now.
 
 ### PDF compression model (`pdf_compress_service.dart`)
 
 Compression is implemented by **rasterizing every page** to JPEG at a level-specific DPI/quality (`CompressionLevel.low/medium/high`) and rebuilding the PDF from those images. This is the right call for image-heavy/scanned PDFs but turns vector text into raster — a quality/size tradeoff. If rasterization doesn't actually shrink the file, the original bytes are kept so the user never gets a larger output.
 
-### Syncfusion license
+### Syncfusion (merge)
 
-`syncfusion_flutter_pdf` is used for merging. Without `SYNCFUSION_LICENSE_KEY` registered at startup, generated PDFs carry a trial banner. The free Community License is sufficient for qualifying use.
+`syncfusion_flutter_pdf` is used for merging — pages are copied via `createTemplate()` + `drawPdfTemplate()` (the Flutter package has no `importPageRange`). The merge runs on a background isolate via `compute()`. License registration is **not required** in the current package version (`SyncfusionLicense.registerLicense` is deprecated/no-op), so no trial banner appears.
 
 ## Constraints to preserve
 

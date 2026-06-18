@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -101,16 +101,14 @@ class PdfCompressService {
   ) async {
     final document = pw.Document();
 
+    // Rasterization uses a native plugin and must stay on the main isolate,
+    // but the CPU-heavy JPEG encoding of each page is offloaded via compute().
     await for (final page in Printing.raster(bytes, dpi: level.dpi)) {
-      // page.pixels is raw RGBA; re-encode it as a (lossy) JPEG.
-      final rgba = img.Image.fromBytes(
-        width: page.width,
-        height: page.height,
-        bytes: page.pixels.buffer,
-        numChannels: 4,
+      final jpeg = await compute(
+        _encodePageJpg,
+        _JpgParams(page.pixels, page.width, page.height, level.quality),
       );
-      final jpeg = img.encodeJpg(rgba, quality: level.quality);
-      final image = pw.MemoryImage(Uint8List.fromList(jpeg));
+      final image = pw.MemoryImage(jpeg);
 
       // Keep the page's physical size: pixels / dpi * 72 = points.
       final widthPt = page.width / level.dpi * PdfPageFormat.inch;
@@ -138,4 +136,26 @@ class PdfCompressService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     return 'compressed_${level.name}_$timestamp.pdf';
   }
+}
+
+/// Arguments for [_encodePageJpg] (must be a single sendable object).
+class _JpgParams {
+  const _JpgParams(this.pixels, this.width, this.height, this.quality);
+
+  final Uint8List pixels; // raw RGBA
+  final int width;
+  final int height;
+  final int quality;
+}
+
+/// Runs on a background isolate (via `compute`). Re-encodes one rasterized page
+/// (raw RGBA) as a JPEG at the given quality.
+Uint8List _encodePageJpg(_JpgParams p) {
+  final rgba = img.Image.fromBytes(
+    width: p.width,
+    height: p.height,
+    bytes: p.pixels.buffer,
+    numChannels: 4,
+  );
+  return Uint8List.fromList(img.encodeJpg(rgba, quality: p.quality));
 }

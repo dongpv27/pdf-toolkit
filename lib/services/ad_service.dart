@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -54,16 +55,65 @@ class AdService {
 
   // --- Lifecycle ------------------------------------------------------------
 
-  /// Initializes the Mobile Ads SDK. Call once from `main()`.
+  /// Gathers GDPR/UMP consent, then initializes the Mobile Ads SDK and starts
+  /// preloading ads **only if** ads may be requested. Call once from `main()`.
+  ///
+  /// Flow (Google's recommended order):
+  ///   1. Request the latest consent info.
+  ///   2. In the EEA/UK, show the consent form when required.
+  ///   3. If `canRequestAds()` is true, initialize the SDK and load ads.
+  /// Outside the EEA (no form needed) `canRequestAds()` is true by default, so
+  /// ads initialize immediately.
   Future<void> initialize() async {
+    try {
+      await _gatherConsent();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Consent gathering failed: $e');
+    }
+
+    final canRequestAds = await ConsentInformation.instance.canRequestAds();
+    if (canRequestAds) {
+      await _initSdkAndLoad();
+    }
+  }
+
+  /// Requests consent info and shows the UMP form if required. Completes once
+  /// consent has been resolved (or failed — we then fall back gracefully).
+  Future<void> _gatherConsent() {
+    final completer = Completer<void>();
+    ConsentInformation.instance.requestConsentInfoUpdate(
+      ConsentRequestParameters(),
+      () async {
+        try {
+          await ConsentForm.loadAndShowConsentFormIfRequired((FormError? e) {
+            if (e != null && kDebugMode) {
+              debugPrint('Consent form error: ${e.errorCode} ${e.message}');
+            }
+          });
+        } finally {
+          if (!completer.isCompleted) completer.complete();
+        }
+      },
+      (FormError error) {
+        if (kDebugMode) debugPrint('Consent update failed: ${error.message}');
+        if (!completer.isCompleted) completer.complete();
+      },
+    );
+    return completer.future;
+  }
+
+  Future<void> _initSdkAndLoad() async {
     if (_initialized) return;
     await MobileAds.instance.initialize();
     _initialized = true;
+    loadAds();
   }
 
-  /// Preloads a rewarded and an interstitial ad so they are ready on demand.
+  /// Preloads the interstitial ad so it is ready on demand.
+  ///
+  /// Rewarded ads are not preloaded: the app no longer gates actions behind a
+  /// rewarded ad (see [showRewardedAd], kept available for optional future use).
   void loadAds() {
-    _loadRewardedAd();
     _loadInterstitialAd();
   }
 
@@ -111,22 +161,29 @@ class AdService {
     }
     _rewardedAd = null;
 
+    // `ad.show()` completes as soon as the ad is presented, NOT when it is
+    // dismissed — so we wait on a Completer that resolves from the full-screen
+    // callbacks to know whether the reward was actually earned.
+    final completer = Completer<bool>();
     var earned = false;
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _loadRewardedAd();
+        if (!completer.isCompleted) completer.complete(earned);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _loadRewardedAd();
+        // Don't block functionality if the ad fails to present.
+        if (!completer.isCompleted) completer.complete(true);
       },
     );
 
     await ad.show(
       onUserEarnedReward: (_, __) => earned = true,
     );
-    return earned;
+    return completer.future;
   }
 
   // --- Interstitial ---------------------------------------------------------
@@ -134,9 +191,9 @@ class AdService {
   static const int _interstitialEvery = 2;
   int _opsSinceInterstitial = 0;
 
-  /// Call after a successful gated operation (export/merge/compress). Shows an
-  /// interstitial only once every [_interstitialEvery] operations, because a
-  /// rewarded ad already runs *before* each operation — this avoids ad fatigue.
+  /// Call after a successful operation (export/merge/compress). Shows an
+  /// interstitial only once every [_interstitialEvery] operations to avoid ad
+  /// fatigue. This is the app's primary action ad (no rewarded gating).
   Future<void> maybeShowInterstitial() async {
     _opsSinceInterstitial++;
     if (_opsSinceInterstitial < _interstitialEvery) return;

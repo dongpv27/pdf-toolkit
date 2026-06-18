@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
@@ -34,57 +35,16 @@ class PdfMergeService {
       throw ArgumentError('Select at least two PDF files to merge.');
     }
 
-    final PdfDocument output = PdfDocument();
-    final List<PdfDocument> sources = [];
+    // Merge on a background isolate so large documents don't block the UI.
+    final (bytes, pageCount) = await compute(_mergePdfs, pdfPaths);
 
-    try {
-      for (final path in pdfPaths) {
-        final file = File(path);
-        if (!await file.exists()) {
-          throw Exception('File not found: $path');
-        }
+    final outputDir = await getApplicationDocumentsDirectory();
+    final name = _resolveFileName(fileName);
+    final outFile = File('${outputDir.path}/$name');
+    await outFile.writeAsBytes(bytes);
 
-        final PdfDocument source;
-        try {
-          source = PdfDocument(inputBytes: await file.readAsBytes());
-        } catch (_) {
-          throw Exception('Could not read PDF: ${_baseName(path)}');
-        }
-        sources.add(source);
-
-        // Copy every page of this source into the output document. Each source
-        // page is drawn as a template (a form XObject), which preserves vector
-        // text/graphics losslessly while keeping the original page size.
-        for (int i = 0; i < source.pages.count; i++) {
-          final sourcePage = source.pages[i];
-          final size = sourcePage.size;
-          final template = sourcePage.createTemplate();
-
-          output.pageSettings.margins.all = 0;
-          output.pageSettings.size = size;
-          final newPage = output.pages.add();
-          newPage.graphics.drawPdfTemplate(template, Offset.zero, size);
-        }
-      }
-
-      final bytes = await output.save();
-      final pageCount = output.pages.count;
-
-      final outputDir = await getApplicationDocumentsDirectory();
-      final name = _resolveFileName(fileName);
-      final outFile = File('${outputDir.path}/$name');
-      await outFile.writeAsBytes(bytes);
-
-      return MergeResult(file: outFile, pageCount: pageCount);
-    } finally {
-      output.dispose();
-      for (final s in sources) {
-        s.dispose();
-      }
-    }
+    return MergeResult(file: outFile, pageCount: pageCount);
   }
-
-  String _baseName(String path) => path.split(RegExp(r'[\\/]')).last;
 
   String _resolveFileName(String? fileName) {
     if (fileName != null && fileName.trim().isNotEmpty) {
@@ -93,5 +53,52 @@ class PdfMergeService {
     }
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     return 'merged_$timestamp.pdf';
+  }
+}
+
+/// Runs on a background isolate (via `compute`). Reads every source PDF and
+/// copies all pages into one document, returning (encoded bytes, total pages).
+///
+/// Throws [Exception] if a file is missing or cannot be parsed.
+Future<(Uint8List, int)> _mergePdfs(List<String> pdfPaths) async {
+  final PdfDocument output = PdfDocument();
+  final List<PdfDocument> sources = [];
+
+  try {
+    for (final path in pdfPaths) {
+      final file = File(path);
+      if (!file.existsSync()) {
+        throw Exception('File not found: $path');
+      }
+
+      final PdfDocument source;
+      try {
+        source = PdfDocument(inputBytes: file.readAsBytesSync());
+      } catch (_) {
+        throw Exception('Could not read PDF: ${path.split(RegExp(r'[\\/]')).last}');
+      }
+      sources.add(source);
+
+      // Copy every page as a template (form XObject) — preserves vector
+      // text/graphics losslessly while keeping the original page size.
+      for (int i = 0; i < source.pages.count; i++) {
+        final sourcePage = source.pages[i];
+        final size = sourcePage.size;
+        final template = sourcePage.createTemplate();
+
+        output.pageSettings.margins.all = 0;
+        output.pageSettings.size = size;
+        final newPage = output.pages.add();
+        newPage.graphics.drawPdfTemplate(template, Offset.zero, size);
+      }
+    }
+
+    final bytes = Uint8List.fromList(await output.save());
+    return (bytes, output.pages.count);
+  } finally {
+    output.dispose();
+    for (final s in sources) {
+      s.dispose();
+    }
   }
 }

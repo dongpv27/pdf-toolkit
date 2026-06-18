@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../services/ad_service.dart';
 import '../services/image_to_pdf_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
@@ -39,15 +38,6 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
 
   Future<void> _convert() async {
     if (_images.isEmpty || _isConverting) return;
-
-    // Gate the export behind a rewarded ad.
-    final rewarded = await AdService.instance.showRewardedAd();
-    if (!mounted || !rewarded) {
-      if (mounted && !rewarded) {
-        AppSnackBar.info(context, 'Watch the ad to export your PDF.');
-      }
-      return;
-    }
 
     setState(() => _isConverting = true);
     try {

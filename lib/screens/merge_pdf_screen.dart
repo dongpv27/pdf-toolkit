@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../services/ad_service.dart';
 import '../services/pdf_merge_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
@@ -51,15 +50,6 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
 
   Future<void> _merge() async {
     if (_files.length < 2 || _isMerging) return;
-
-    // Gate the merge behind a rewarded ad.
-    final rewarded = await AdService.instance.showRewardedAd();
-    if (!mounted || !rewarded) {
-      if (mounted && !rewarded) {
-        AppSnackBar.info(context, 'Watch the ad to merge your PDFs.');
-      }
-      return;
-    }
 
     setState(() => _isMerging = true);
     try {
