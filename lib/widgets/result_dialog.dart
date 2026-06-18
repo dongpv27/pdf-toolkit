@@ -6,14 +6,21 @@ import '../services/ad_service.dart';
 import 'app_snackbar.dart';
 
 /// Success dialog shown after a PDF is created/merged/compressed. Offers Open,
-/// Share and Done actions. Closing via "Done" may show an interstitial ad.
+/// Share and Done actions.
+///
+/// An interstitial ad (at most every few operations) is shown **before** the
+/// dialog and we wait for it to close first, so the ad never ends up hidden
+/// behind the Open/Share/Done actions. The result is presented only after the
+/// ad is dismissed.
 Future<void> showResultDialog(
   BuildContext context, {
   required String title,
   required String message,
   required String filePath,
   Widget? extra,
-}) {
+}) async {
+  await AdService.instance.maybeShowInterstitial();
+  if (!context.mounted) return;
   return showDialog<void>(
     context: context,
     builder: (dialogContext) {
@@ -56,11 +63,7 @@ Future<void> showResultDialog(
             label: const Text('Share'),
           ),
           FilledButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              // Fire-and-forget; shows an interstitial every few operations.
-              AdService.instance.maybeShowInterstitial();
-            },
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Done'),
           ),
         ],

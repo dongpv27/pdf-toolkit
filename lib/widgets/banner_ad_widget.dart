@@ -19,6 +19,15 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   void initState() {
     super.initState();
+    _loadWhenReady();
+  }
+
+  /// Waits until the Mobile Ads SDK is initialized before loading, so the
+  /// banner doesn't call `load()` while the SDK is still starting up (which
+  /// fails silently and would leave the banner permanently blank).
+  Future<void> _loadWhenReady() async {
+    await AdService.instance.adsReady;
+    if (!mounted) return;
     _bannerAd = AdService.instance.createBannerAd(
       onLoaded: () {
         if (mounted) setState(() => _isLoaded = true);

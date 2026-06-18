@@ -19,6 +19,16 @@ class AdService {
 
   bool _initialized = false;
 
+  // Completes once the Mobile Ads SDK has been initialized and ads may be
+  // requested. Widgets (e.g. the banner) await this before loading so they
+  // never call `load()` before the SDK is ready — which fails silently.
+  final Completer<void> _ready = Completer<void>();
+
+  /// Resolves when the Mobile Ads SDK is initialized and ads can be requested.
+  /// Never resolves if consent disallows ads, so awaiting callers simply show
+  /// nothing — the correct fallback.
+  Future<void> get adsReady => _ready.future;
+
   // --- Ad unit IDs ----------------------------------------------------------
   //
   // Real unit IDs are injected at build time via --dart-define so no secret or
@@ -106,6 +116,7 @@ class AdService {
     if (_initialized) return;
     await MobileAds.instance.initialize();
     _initialized = true;
+    if (!_ready.isCompleted) _ready.complete();
     loadAds();
   }
 
@@ -194,34 +205,54 @@ class AdService {
   /// Call after a successful operation (export/merge/compress). Shows an
   /// interstitial only once every [_interstitialEvery] operations to avoid ad
   /// fatigue. This is the app's primary action ad (no rewarded gating).
+  ///
+  /// The counter is reset **only when an ad is actually presented**. If the
+  /// impression is "due" but no ad can be served yet — e.g. the device was
+  /// offline so nothing preloaded — the count is kept, a fresh load is kicked
+  /// off, and the ad is shown on the next op once one is ready. This way an
+  /// offline stretch carries the pending impression over instead of silently
+  /// burning the cycle.
   Future<void> maybeShowInterstitial() async {
     _opsSinceInterstitial++;
     if (_opsSinceInterstitial < _interstitialEvery) return;
-    _opsSinceInterstitial = 0;
-    await showInterstitialAd();
+    final shown = await showInterstitialAd();
+    if (shown) _opsSinceInterstitial = 0;
   }
 
-  /// Shows an interstitial ad if one is ready; no-op otherwise.
-  Future<void> showInterstitialAd() async {
+  /// Shows an interstitial ad if one is ready and **completes only once the ad
+  /// is dismissed** (or fails to present), so callers can await it and then
+  /// continue — e.g. present a result dialog after the ad closes.
+  ///
+  /// Returns `true` if an ad was presented and dismissed, `false` if none was
+  /// loaded or it failed to show (in which case a fresh one is requested for
+  /// next time and the caller should proceed immediately).
+  Future<bool> showInterstitialAd() async {
     final ad = _interstitialAd;
     if (ad == null) {
       _loadInterstitialAd();
-      return;
+      return false;
     }
     _interstitialAd = null;
 
+    // `ad.show()` resolves as soon as the ad is presented, not when dismissed,
+    // so wait on a Completer driven by the full-screen callbacks.
+    final completer = Completer<bool>();
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _loadInterstitialAd();
+        if (!completer.isCompleted) completer.complete(true);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _loadInterstitialAd();
+        // Couldn't present — treat as "not shown" so the cycle isn't burned.
+        if (!completer.isCompleted) completer.complete(false);
       },
     );
 
     await ad.show();
+    return completer.future;
   }
 
   // --- Banner ---------------------------------------------------------------

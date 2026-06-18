@@ -139,22 +139,20 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
         const SizedBox(height: 8),
         IgnorePointer(
           ignoring: _isCompressing,
-          child: RadioGroup<CompressionLevel>(
-            groupValue: _level,
-            onChanged: (value) {
-              if (value != null) setState(() => _level = value);
-            },
-            child: Column(
-              children: [
-                for (final level in CompressionLevel.values)
-                  RadioListTile<CompressionLevel>(
-                    value: level,
-                    activeColor: _accent,
-                    title: Text(level.label),
-                    subtitle: Text(level.description),
-                  ),
-              ],
-            ),
+          child: Column(
+            children: [
+              for (final level in CompressionLevel.values)
+                RadioListTile<CompressionLevel>(
+                  value: level,
+                  groupValue: _level,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _level = value);
+                  },
+                  activeColor: _accent,
+                  title: Text(level.label),
+                  subtitle: Text(level.description),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
