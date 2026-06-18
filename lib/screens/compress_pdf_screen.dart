@@ -99,7 +99,7 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
               accentColor: _accent,
             )
           : _buildBody(file),
-      bottomNavigationBar: _buildBottomBar(),
+      bottomNavigationBar: file == null ? null : _buildBottomBar(),
     );
   }
 
@@ -187,36 +187,25 @@ class _CompressPdfScreenState extends State<CompressPdfScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: _file == null
-            ? FilledButton.icon(
-                onPressed: _isCompressing ? null : _pickFile,
-                icon: const Icon(Icons.upload_file_outlined),
-                label: const Text('Pick PDF'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _accent,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                ),
-              )
-            : FilledButton.icon(
-                onPressed: _isCompressing ? null : _compress,
-                icon: _isCompressing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.compress_outlined),
-                label: Text(_isCompressing ? 'Compressing...' : 'Compress PDF'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _accent,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                ),
-              ),
+        child: FilledButton.icon(
+          onPressed: _isCompressing ? null : _compress,
+          icon: _isCompressing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.compress_outlined),
+          label: Text(_isCompressing ? 'Compressing...' : 'Compress PDF'),
+          style: FilledButton.styleFrom(
+            backgroundColor: _accent,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(52),
+          ),
+        ),
       ),
     );
   }

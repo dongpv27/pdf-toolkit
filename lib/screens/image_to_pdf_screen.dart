@@ -16,6 +16,9 @@ class ImageToPdfScreen extends StatefulWidget {
 }
 
 class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
+  // Accent matching the blue "Image to PDF" tile on the home screen.
+  static const Color _accent = Color(0xFF2563EB);
+
   final ImagePicker _picker = ImagePicker();
   final ImageToPdfService _service = const ImageToPdfService();
 
@@ -34,6 +37,28 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
 
   void _removeImage(int index) {
     setState(() => _images.removeAt(index));
+  }
+
+  Future<void> _clearAll() async {
+    if (_images.isEmpty || _isConverting) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear all images?'),
+        content: Text('This removes all ${_images.length} selected image(s).'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear all'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) setState(() => _images.clear());
   }
 
   Future<void> _convert() async {
@@ -66,12 +91,18 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
       appBar: AppBar(
         title: const Text('Image to PDF'),
         actions: [
-          if (_images.isNotEmpty)
+          if (_images.isNotEmpty) ...[
             IconButton(
               tooltip: 'Add more',
               onPressed: _isConverting ? null : _pickImages,
               icon: const Icon(Icons.add_photo_alternate_outlined),
             ),
+            IconButton(
+              tooltip: 'Clear all',
+              onPressed: _isConverting ? null : _clearAll,
+              icon: const Icon(Icons.delete_sweep_outlined),
+            ),
+          ],
         ],
       ),
       body: _images.isEmpty
@@ -81,9 +112,10 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
               message: 'Pick photos from your gallery to combine them into a single PDF.',
               actionLabel: 'Pick Images',
               onAction: _isConverting ? null : _pickImages,
+              accentColor: _accent,
             )
           : _buildGrid(),
-      bottomNavigationBar: _buildBottomBar(),
+      bottomNavigationBar: _images.isEmpty ? null : _buildBottomBar(),
     );
   }
 
@@ -131,36 +163,29 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: _images.isEmpty
-            ? FilledButton.icon(
-                onPressed: _isConverting ? null : _pickImages,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Pick Images'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                ),
-              )
-            : FilledButton.icon(
-                onPressed: _isConverting ? null : _convert,
-                icon: _isConverting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.picture_as_pdf_outlined),
-                label: Text(
-                  _isConverting
-                      ? 'Converting...'
-                      : 'Convert to PDF (${_images.length})',
-                ),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                ),
-              ),
+        child: FilledButton.icon(
+          onPressed: _isConverting ? null : _convert,
+          icon: _isConverting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.picture_as_pdf_outlined),
+          label: Text(
+            _isConverting
+                ? 'Converting...'
+                : 'Convert to PDF (${_images.length})',
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: _accent,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(52),
+          ),
+        ),
       ),
     );
   }

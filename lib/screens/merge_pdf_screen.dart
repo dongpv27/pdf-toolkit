@@ -48,6 +48,28 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
     setState(() => _files.removeAt(index));
   }
 
+  Future<void> _clearAll() async {
+    if (_files.isEmpty || _isMerging) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear all files?'),
+        content: Text('This removes all ${_files.length} selected PDF(s).'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear all'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) setState(() => _files.clear());
+  }
+
   Future<void> _merge() async {
     if (_files.length < 2 || _isMerging) return;
 
@@ -83,12 +105,18 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
       appBar: AppBar(
         title: const Text('Merge PDF'),
         actions: [
-          if (_files.isNotEmpty)
+          if (_files.isNotEmpty) ...[
             IconButton(
               tooltip: 'Add more',
               onPressed: _isMerging ? null : _pickFiles,
               icon: const Icon(Icons.note_add_outlined),
             ),
+            IconButton(
+              tooltip: 'Clear all',
+              onPressed: _isMerging ? null : _clearAll,
+              icon: const Icon(Icons.delete_sweep_outlined),
+            ),
+          ],
         ],
       ),
       body: _files.isEmpty
@@ -101,7 +129,7 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
               accentColor: _accent,
             )
           : _buildList(),
-      bottomNavigationBar: _buildBottomBar(),
+      bottomNavigationBar: _files.isEmpty ? null : _buildBottomBar(),
     );
   }
 
@@ -146,38 +174,27 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: _files.isEmpty
-            ? FilledButton.icon(
-                onPressed: _isMerging ? null : _pickFiles,
-                icon: const Icon(Icons.upload_file_outlined),
-                label: const Text('Pick PDFs'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _accent,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                ),
-              )
-            : FilledButton.icon(
-                onPressed: canMerge ? _merge : null,
-                icon: _isMerging
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.merge_outlined),
-                label: Text(
-                  _isMerging ? 'Merging...' : 'Merge PDFs (${_files.length})',
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _accent,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                ),
-              ),
+        child: FilledButton.icon(
+          onPressed: canMerge ? _merge : null,
+          icon: _isMerging
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.merge_outlined),
+          label: Text(
+            _isMerging ? 'Merging...' : 'Merge PDFs (${_files.length})',
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: _accent,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(52),
+          ),
+        ),
       ),
     );
   }
