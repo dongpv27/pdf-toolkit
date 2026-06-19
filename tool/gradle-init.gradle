@@ -1,0 +1,41 @@
+// ===========================================================================
+// INSTALL: copy this file to ~/.gradle/init.gradle  (it is machine-global and
+// lives OUTSIDE the project, so it can't take effect from here).
+//
+//   cp tool/gradle-init.gradle ~/.gradle/init.gradle
+//
+// Only needed on networks that block Maven Central. To disable: delete the
+// copy at ~/.gradle/init.gradle.
+// ===========================================================================
+//
+// Network here blocks Maven Central (repo.maven.apache.org -> HTTP 403).
+// Some third-party plugins (e.g. cunning_document_scanner) hard-code
+// mavenCentral() in their OWN buildscript {} block to resolve their Android
+// Gradle Plugin classpath. That bypasses the project's GCS-mirror repositories,
+// so their classpath (guava, AGP) fails to download.
+//
+// This init script swaps Maven Central for Google's full GCS mirror ONLY in
+// buildscript classpath repositories (project dependency repos are already
+// handled by the app's android/build.gradle.kts, so we don't touch those —
+// touching them conflicts with Flutter's settings repositoriesMode).
+//
+// To disable: delete ~/.gradle/init.gradle
+def mirror = 'https://maven-central.storage-download.googleapis.com/maven2'
+
+def isBlocked = { repo ->
+    if (!(repo instanceof MavenArtifactRepository)) return false
+    def url = repo.url.toString()
+    return url.startsWith('https://repo.maven.apache.org/maven2') ||
+           url.startsWith('https://repo1.maven.org/maven2') ||
+           url.startsWith('http://repo1.maven.org/maven2') ||
+           url.startsWith('https://jcenter.bintray.com')
+}
+
+allprojects {
+    buildscript {
+        repositories {
+            all { repo -> if (isBlocked(repo)) remove repo }
+            maven { url mirror }
+        }
+    }
+}
