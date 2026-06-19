@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/pdf_merge_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/filename_dialog.dart';
 import '../widgets/result_dialog.dart';
 
 class MergePdfScreen extends StatefulWidget {
@@ -48,6 +49,14 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
     setState(() => _files.removeAt(index));
   }
 
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _files.removeAt(oldIndex);
+      _files.insert(newIndex, item);
+    });
+  }
+
   Future<void> _clearAll() async {
     if (_files.isEmpty || _isMerging) return;
     final confirmed = await showDialog<bool>(
@@ -73,10 +82,14 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
   Future<void> _merge() async {
     if (_files.length < 2 || _isMerging) return;
 
+    final name = await promptFileName(context, defaultName: 'merged', accent: _accent);
+    if (name == null || !mounted) return;
+
     setState(() => _isMerging = true);
     try {
       final result = await _service.merge(
         _files.map((f) => f.path!).toList(),
+        fileName: name,
       );
       if (!mounted) return;
       AppSnackBar.success(context, 'PDFs merged successfully.');
@@ -134,19 +147,24 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
   }
 
   Widget _buildList() {
-    return ListView.separated(
+    final scheme = Theme.of(context).colorScheme;
+    return ReorderableListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: _files.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      buildDefaultDragHandles: false,
+      onReorder: _onReorder,
       itemBuilder: (context, index) {
         final file = _files[index];
         return Card(
+          key: ObjectKey(file),
           elevation: 0,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: scheme.surfaceContainerHighest,
+          margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
           child: ListTile(
+            contentPadding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
             leading: CircleAvatar(
               backgroundColor: _accent.withValues(alpha: 0.15),
               foregroundColor: _accent,
@@ -158,10 +176,23 @@ class _MergePdfScreenState extends State<MergePdfScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(_formatSize(file.size)),
-            trailing: IconButton(
-              tooltip: 'Remove',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _isMerging ? null : () => _removeFile(index),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Remove',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _isMerging ? null : () => _removeFile(index),
+                ),
+                ReorderableDragStartListener(
+                  index: index,
+                  enabled: !_isMerging,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.drag_handle),
+                  ),
+                ),
+              ],
             ),
           ),
         );

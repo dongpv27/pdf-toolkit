@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:cunning_document_scanner/cunning_document_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/image_to_pdf_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/filename_dialog.dart';
 import '../widgets/result_dialog.dart';
 
 class ImageToPdfScreen extends StatefulWidget {
@@ -35,8 +37,26 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
     }
   }
 
+  Future<void> _scan() async {
+    try {
+      final pictures = await CunningDocumentScanner.getPictures();
+      if (pictures == null || pictures.isEmpty) return;
+      setState(() => _images.addAll(pictures.map((p) => XFile(p))));
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, 'Scan failed: $e');
+    }
+  }
+
   void _removeImage(int index) {
     setState(() => _images.removeAt(index));
+  }
+
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _images.removeAt(oldIndex);
+      _images.insert(newIndex, item);
+    });
   }
 
   Future<void> _clearAll() async {
@@ -64,10 +84,14 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
   Future<void> _convert() async {
     if (_images.isEmpty || _isConverting) return;
 
+    final name = await promptFileName(context, defaultName: 'images', accent: _accent);
+    if (name == null || !mounted) return;
+
     setState(() => _isConverting = true);
     try {
       final result = await _service.convert(
         _images.map((x) => x.path).toList(),
+        fileName: name,
       );
       if (!mounted) return;
       AppSnackBar.success(context, 'PDF created successfully.');
@@ -91,6 +115,11 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
       appBar: AppBar(
         title: const Text('Image to PDF'),
         actions: [
+          IconButton(
+            tooltip: 'Scan document',
+            onPressed: _isConverting ? null : _scan,
+            icon: const Icon(Icons.document_scanner_outlined),
+          ),
           if (_images.isNotEmpty) ...[
             IconButton(
               tooltip: 'Add more',
@@ -109,50 +138,69 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
           ? EmptyStateView(
               icon: Icons.image_outlined,
               title: 'No images yet',
-              message: 'Pick photos from your gallery to combine them into a single PDF.',
+              message: 'Pick photos from your gallery — or tap the scan icon to '
+                  'capture documents with auto edge-detection — to combine into a PDF.',
               actionLabel: 'Pick Images',
               onAction: _isConverting ? null : _pickImages,
               accentColor: _accent,
             )
-          : _buildGrid(),
+          : _buildList(),
       bottomNavigationBar: _images.isEmpty ? null : _buildBottomBar(),
     );
   }
 
-  Widget _buildGrid() {
-    return GridView.builder(
+  Widget _buildList() {
+    final scheme = Theme.of(context).colorScheme;
+    return ReorderableListView.builder(
       padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 140,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
       itemCount: _images.length,
+      buildDefaultDragHandles: false,
+      onReorder: _onReorder,
       itemBuilder: (context, index) {
         final image = _images[index];
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.file(File(image.path), fit: BoxFit.cover),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Material(
-                  color: Colors.black54,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _isConverting ? null : () => _removeImage(index),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.close, size: 18, color: Colors.white),
-                    ),
+        return Card(
+          key: ObjectKey(image),
+          elevation: 0,
+          color: scheme.surfaceContainerHighest,
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(image.path),
+                width: 46,
+                height: 58,
+                fit: BoxFit.cover,
+              ),
+            ),
+            title: Text('Page ${index + 1}'),
+            subtitle: Text(
+              image.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Remove',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _isConverting ? null : () => _removeImage(index),
+                ),
+                ReorderableDragStartListener(
+                  index: index,
+                  enabled: !_isConverting,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.drag_handle),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

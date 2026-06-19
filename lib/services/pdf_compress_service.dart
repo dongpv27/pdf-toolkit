@@ -6,6 +6,22 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
+
+/// How to compress:
+/// - [smart]: lossless stream compression — **text stays selectable**. Best for
+///   text / mixed PDFs.
+/// - [strong]: re-render each page as a JPEG image — much smaller for scanned /
+///   photo PDFs, but text becomes a raster image.
+enum CompressionMode {
+  smart('Keep text', 'Lossless — text stays selectable. Best for text & mixed PDFs.'),
+  strong('Smaller size', 'Re-renders pages as images. Best for scanned/photo PDFs.');
+
+  const CompressionMode(this.label, this.description);
+
+  final String label;
+  final String description;
+}
 
 /// User-facing compression strength. Each level maps to a render resolution
 /// (DPI) and JPEG quality — lower values = smaller file, lower fidelity.
@@ -95,6 +111,45 @@ class PdfCompressService {
     );
   }
 
+  /// Lossless "smart" compression: re-saves the PDF with maximum stream
+  /// (deflate) compression. Text and vectors are preserved (still selectable).
+  /// Falls back to the original bytes if it doesn't actually shrink.
+  Future<CompressionResult> compressSmart(
+    String pdfPath, {
+    String? fileName,
+  }) async {
+    final input = File(pdfPath);
+    if (!await input.exists()) {
+      throw Exception('File not found: $pdfPath');
+    }
+
+    final originalBytes = await input.readAsBytes();
+
+    final Uint8List compressed;
+    try {
+      compressed = await compute(_smartCompress, originalBytes);
+    } catch (_) {
+      throw Exception('Could not read PDF: ${_baseName(pdfPath)}');
+    }
+
+    final outputBytes =
+        compressed.length < originalBytes.length ? compressed : originalBytes;
+
+    final outputDir = await getApplicationDocumentsDirectory();
+    final base = (fileName == null || fileName.trim().isEmpty)
+        ? 'compressed_${DateTime.now().millisecondsSinceEpoch}'
+        : fileName.trim();
+    final name = base.toLowerCase().endsWith('.pdf') ? base : '$base.pdf';
+    final outFile = File('${outputDir.path}/$name');
+    await outFile.writeAsBytes(outputBytes);
+
+    return CompressionResult(
+      file: outFile,
+      originalBytes: originalBytes.length,
+      compressedBytes: outputBytes.length,
+    );
+  }
+
   Future<Uint8List> _rasterizeAndReencode(
     Uint8List bytes,
     CompressionLevel level,
@@ -158,4 +213,16 @@ Uint8List _encodePageJpg(_JpgParams p) {
     numChannels: 4,
   );
   return Uint8List.fromList(img.encodeJpg(rgba, quality: p.quality));
+}
+
+/// Runs on a background isolate (via `compute`). Re-saves the PDF with maximum
+/// deflate compression — lossless, so text/vectors stay intact.
+Future<Uint8List> _smartCompress(Uint8List bytes) async {
+  final document = sf.PdfDocument(inputBytes: bytes);
+  document.compressionLevel = sf.PdfCompressionLevel.best;
+  try {
+    return Uint8List.fromList(await document.save());
+  } finally {
+    document.dispose();
+  }
 }

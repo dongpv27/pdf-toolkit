@@ -15,6 +15,13 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('PDF Toolkit'),
+        actions: [
+          IconButton(
+            tooltip: 'My Files',
+            icon: const Icon(Icons.folder_outlined),
+            onPressed: () => context.push(AppRoutes.files),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -65,6 +72,33 @@ class HomeScreen extends StatelessWidget {
                     iconBackground: const Color(0xFFFEF3C7), // amber
                     iconColor: const Color(0xFFD97706),
                     onTap: () => context.push(AppRoutes.compressPdf),
+                  ),
+                  const SizedBox(height: 12),
+                  ToolCard(
+                    icon: Icons.dashboard_customize_outlined,
+                    title: 'Organize Pages',
+                    subtitle: 'Reorder, rotate or delete pages',
+                    iconBackground: const Color(0xFFEDE9FE), // violet
+                    iconColor: const Color(0xFF7C3AED),
+                    onTap: () => context.push(AppRoutes.organizePdf),
+                  ),
+                  const SizedBox(height: 12),
+                  ToolCard(
+                    icon: Icons.call_split,
+                    title: 'Split PDF',
+                    subtitle: 'Split pages or extract a range',
+                    iconBackground: const Color(0xFFCFFAFE), // cyan
+                    iconColor: const Color(0xFF0891B2),
+                    onTap: () => context.push(AppRoutes.splitPdf),
+                  ),
+                  const SizedBox(height: 12),
+                  ToolCard(
+                    icon: Icons.collections_outlined,
+                    title: 'PDF to Images',
+                    subtitle: 'Export each page as a JPG',
+                    iconBackground: const Color(0xFFFCE7F3), // pink
+                    iconColor: const Color(0xFFDB2777),
+                    onTap: () => context.push(AppRoutes.pdfToImages),
                   ),
                 ],
               ),
