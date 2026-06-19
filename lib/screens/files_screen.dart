@@ -6,6 +6,7 @@ import '../services/file_store_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/filename_dialog.dart';
+import 'pdf_preview_screen.dart';
 
 /// Library of every PDF the app has produced. Lets the user open, share,
 /// rename and delete past outputs.
@@ -134,7 +135,7 @@ class _FilesScreenState extends State<FilesScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
-        onTap: () => _open(f),
+        onTap: () => openPdfPreview(context, f.path, title: f.name),
         leading: const Icon(Icons.picture_as_pdf_outlined, color: _accent),
         title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text('${_formatSize(f.size)} · ${_formatDate(f.modified)}'),

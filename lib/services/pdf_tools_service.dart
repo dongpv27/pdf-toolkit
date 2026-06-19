@@ -40,6 +40,19 @@ class PdfToolsService {
     return thumbs;
   }
 
+  /// Renders a single page (by 0-based index) to a PNG — used by the in-app
+  /// viewer to render pages lazily as the user scrolls.
+  Future<Uint8List> renderPagePng(
+    Uint8List bytes,
+    int pageIndex, {
+    double dpi = 120,
+  }) async {
+    await for (final page in Printing.raster(bytes, pages: [pageIndex], dpi: dpi)) {
+      return page.toPng();
+    }
+    throw Exception('Could not render page ${pageIndex + 1}');
+  }
+
   /// Rebuilds the PDF using [edits] as the new page order, applying rotations
   /// and dropping any source page not present. Saved to the documents dir.
   Future<File> organize(

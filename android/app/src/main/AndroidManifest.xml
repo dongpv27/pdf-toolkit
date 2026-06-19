@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Saving exported images to the Gallery (PDF to Images). Only needed on
+         Android 9 and below; API 29+ uses scoped MediaStore (no permission). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
     <application
         android:label="PDF Toolkit"
         android:name="${applicationName}"

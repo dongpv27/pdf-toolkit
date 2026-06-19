@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
 
 import '../services/pdf_tools_service.dart';
 import '../widgets/app_snackbar.dart';
@@ -65,13 +66,29 @@ class _PdfToImagesScreenState extends State<PdfToImagesScreen> {
         quality: _quality.jpgQuality,
         baseName: base,
       );
+
+      // Save the exported images straight to the device Gallery.
+      var savedToGallery = 0;
+      try {
+        if (await Gal.requestAccess(toAlbum: true)) {
+          for (final f in files) {
+            await Gal.putImage(f.path, album: 'PDF Toolkit');
+            savedToGallery++;
+          }
+        }
+      } catch (_) {
+        // Gallery save failed/denied — files still exist for "Share all".
+      }
+
       if (!mounted) return;
       AppSnackBar.success(context, 'Exported ${files.length} image(s).');
       await showMultiFileResultDialog(
         context,
         title: 'Exported to images',
-        message: 'Created ${files.length} JPG image(s) in My Files folder. '
-            'Use "Share all" to save them to your gallery.',
+        message: savedToGallery == files.length
+            ? 'Saved ${files.length} image(s) to your Gallery (album "PDF Toolkit").'
+            : 'Created ${files.length} JPG image(s). Couldn\'t save to Gallery — '
+                'use "Share all" to export them.',
         filePaths: files.map((f) => f.path).toList(),
       );
     } catch (e) {
@@ -100,7 +117,8 @@ class _PdfToImagesScreenState extends State<PdfToImagesScreen> {
           ? EmptyStateView(
               icon: Icons.collections_outlined,
               title: 'PDF to images',
-              message: 'Pick a PDF to export each page as a JPG image.',
+              message: 'Pick a PDF to export each page as a JPG image, saved '
+                  'straight to your Gallery.',
               actionLabel: 'Pick PDF',
               onAction: _pickFile,
               accentColor: _accent,
